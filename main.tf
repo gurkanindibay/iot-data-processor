@@ -244,14 +244,12 @@ resource "azurerm_linux_function_app" "func_app" {
       dotnet_version              = "8.0"
       use_dotnet_isolated_runtime = true
     }
-    application_insights_connection_string = azurerm_application_insights.app_insights.connection_string
-    application_insights_key               = azurerm_application_insights.app_insights.instrumentation_key
   }
 
   app_settings = {
     "FUNCTIONS_WORKER_RUNTIME"     = "dotnet-isolated"
     "ServiceBusConnection__fullyQualifiedNamespace" = "${azurerm_servicebus_namespace.servicebus.name}.servicebus.windows.net"
-    "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.app_insights.instrumentation_key
+    "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.app_insights.connection_string
   }
 
   tags = {
@@ -265,12 +263,16 @@ resource "azurerm_role_assignment" "func_servicebus_receiver" {
   scope                = azurerm_servicebus_namespace.servicebus.id
   role_definition_name = "Azure Service Bus Data Receiver"
   principal_id         = azurerm_linux_function_app.func_app.identity[0].principal_id
+
+  depends_on = [azurerm_linux_function_app.func_app]
 }
 
 resource "azurerm_role_assignment" "func_servicebus_sender" {
   scope                = azurerm_servicebus_namespace.servicebus.id
   role_definition_name = "Azure Service Bus Data Sender"
   principal_id         = azurerm_linux_function_app.func_app.identity[0].principal_id
+
+  depends_on = [azurerm_linux_function_app.func_app]
 }
 
 # RBAC: Grant Functions App access to Storage
@@ -278,28 +280,21 @@ resource "azurerm_role_assignment" "func_storage_blob_contributor" {
   scope                = azurerm_storage_account.storage.id
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_linux_function_app.func_app.identity[0].principal_id
+
+  depends_on = [azurerm_linux_function_app.func_app]
 }
 
 # IoT Hub Routing to Service Bus
-# Note: IoT Hub routing uses connection string authentication to Service Bus
-# This is configured automatically by Azure when using servicebus_topic_id
-resource "azurerm_iot_hub_endpoint_servicebus_topic" "routing_endpoint" {
-  resource_group_name = azurerm_resource_group.rg.name
-  iot_hub_name        = azurerm_iot_hub.iot_hub.name
-  name                = "telemetry-routing"
-
-  servicebus_topic_id = azurerm_servicebus_topic.telemetry_topic.id
-}
-
 resource "azurerm_iot_hub_route" "telemetry_route" {
   resource_group_name = azurerm_resource_group.rg.name
   iot_hub_name        = azurerm_iot_hub.iot_hub.name
   name                = "telemetry-route"
 
-  source         = "DeviceMessages"
-  condition      = "true"  # Route all messages
-  endpoint_names = [azurerm_iot_hub_endpoint_servicebus_topic.routing_endpoint.name]
-  enabled        = true
+  source              = "DeviceMessages"
+  condition           = "true"  # Route all messages
+  endpoint_names      = [azurerm_servicebus_topic.telemetry_topic.name]
+  servicebus_topic_id = azurerm_servicebus_topic.telemetry_topic.id
+  enabled             = true
 }
 
 # Outputs
