@@ -7,138 +7,65 @@ This development plan outlines the step-by-step tasks required to implement the 
 
 ### Phase 1: Infrastructure Setup
 
-#### Task 1.1: Create Azure Resource Group
-**Description:** Provision a dedicated resource group for all IoT Data Processor resources to enable organized management and cost tracking.
+#### Task 1.1: Deploy Infrastructure with Terraform
+**Description:** Provision all Azure infrastructure using Terraform including resource group, IoT Hub, Service Bus, Storage Account, Application Insights, and Azure Functions App.
 
 **Prerequisites:**
 - Azure subscription with Contributor role
+- Terraform installed (v1.0+)
 - Azure CLI installed and authenticated
-
-**Estimated Effort:** 30 minutes
-
-**Steps:**
-1. Run `az group create --name iot-data-processor-rg --location eastus`
-2. Verify resource group creation in Azure Portal
-
-**Deliverables:**
-- Azure Resource Group `iot-data-processor-rg`
-
-**Acceptance Criteria:**
-- Resource group exists and is accessible
-- Location is set to preferred region (e.g., eastus)
-
-#### Task 1.2: Provision Azure IoT Hub
-**Description:** Set up IoT Hub with S1 tier to support MQTT connectivity and message routing.
-
-**Prerequisites:**
-- Resource group created (Task 1.1)
-
-**Estimated Effort:** 45 minutes
-
-**Steps:**
-1. Run `az iot hub create --name iot-data-processor-hub --resource-group iot-data-processor-rg --sku S1 --unit 2`
-2. Configure device registry capacity
-3. Enable diagnostic logging
-
-**Deliverables:**
-- IoT Hub instance with S1 tier
-- Diagnostic settings configured
-
-**Acceptance Criteria:**
-- IoT Hub is provisioned and accessible
-- S1 tier with 2 throughput units
-- Diagnostic logs enabled for monitoring
-
-#### Task 1.3: Provision Azure Service Bus
-**Description:** Create Service Bus namespace with topics and subscriptions for message queuing.
-
-**Prerequisites:**
-- Resource group created (Task 1.1)
-
-**Estimated Effort:** 45 minutes
-
-**Steps:**
-1. Run `az servicebus namespace create --name iot-data-processor-sb --resource-group iot-data-processor-rg --sku Standard`
-2. Create topic `telemetry-topic`
-3. Create subscriptions: `aggregation-sub`, `anomaly-detection-sub`, `archival-sub`
-4. Configure Dead Letter Queue settings
-
-**Deliverables:**
-- Service Bus namespace with topic and subscriptions
-- Dead Letter Queue configured
-
-**Acceptance Criteria:**
-- Service Bus namespace exists
-- Topic and subscriptions are created
-- Dead Letter Queue is enabled
-
-#### Task 1.4: Provision Azure Storage Account
-**Description:** Set up Storage Account with Blob containers for data persistence.
-
-**Prerequisites:**
-- Resource group created (Task 1.1)
-
-**Estimated Effort:** 30 minutes
-
-**Steps:**
-1. Run `az storage account create --name iotdataprocstorage --resource-group iot-data-processor-rg --sku Standard_GRS --kind StorageV2`
-2. Create containers: `processed-data`, `anomalies`, `raw-telemetry`
-3. Configure lifecycle management policies
-4. Enable blob versioning
-
-**Deliverables:**
-- Storage Account with configured containers
-- Lifecycle management rules
-
-**Acceptance Criteria:**
-- Storage Account is provisioned with GRS replication
-- All required containers exist
-- Lifecycle policies are active
-
-#### Task 1.5: Provision Application Insights
-**Description:** Set up monitoring workspace for telemetry collection and alerting.
-
-**Prerequisites:**
-- Resource group created (Task 1.1)
-
-**Estimated Effort:** 30 minutes
-
-**Steps:**
-1. Run `az monitor app-insights component create --app iot-data-processor-ai --location eastus --resource-group iot-data-processor-rg`
-2. Configure retention policies
-3. Set up initial alert rules
-
-**Deliverables:**
-- Application Insights workspace
-- Basic alert configurations
-
-**Acceptance Criteria:**
-- Application Insights is provisioned
-- Instrumentation key is available
-- Basic alerts are configured
-
-#### Task 1.6: Configure Managed Identities and RBAC
-**Description:** Set up secure authentication using managed identities and role-based access control.
-
-**Prerequisites:**
-- All Azure resources provisioned (Tasks 1.2-1.5)
 
 **Estimated Effort:** 1 hour
 
 **Steps:**
-1. Create system-assigned managed identity for Functions app (placeholder)
-2. Assign RBAC roles:
-   - Storage Blob Data Contributor to Storage Account
-   - Azure Service Bus Data Receiver to Service Bus
-3. Configure IoT Hub routing endpoint with Service Bus permissions
+1. Run `terraform init` to initialize Terraform providers
+2. Run `terraform plan` to preview infrastructure changes
+3. Review the planned resources (RG, IoT Hub, Service Bus, Storage, App Insights, Functions App)
+4. Run `terraform apply` to provision all resources
+5. Verify resource creation in Azure Portal
 
 **Deliverables:**
-- RBAC role assignments documented
-- Managed identity configuration ready
+- All Azure resources provisioned via Terraform
+- Terraform state file
+- Terraform outputs (connection strings, resource names)
 
 **Acceptance Criteria:**
-- All necessary permissions are assigned
-- No connection strings stored in configuration
+- All resources are provisioned successfully
+- Resource naming follows convention: `{abbreviation}-{project}-{environment}`
+- Functions App has system-assigned managed identity enabled
+- RBAC roles are assigned to Functions App for Service Bus and Storage
+- IoT Hub routing to Service Bus is configured
+- All resources are in the same region with proper tags
+
+#### Task 1.2: Verify Infrastructure Deployment
+**Description:** Verify all Azure resources are provisioned correctly and capture Terraform outputs.
+
+**Prerequisites:**
+- Infrastructure deployed via Terraform (Task 1.1)
+
+**Estimated Effort:** 30 minutes
+
+**Steps:**
+1. Run `terraform output` to view all resource details
+2. Verify IoT Hub: `az iot hub show --name iot-iot-data-processor-dev --resource-group rg-iot-data-processor-dev`
+3. Verify Service Bus: `az servicebus namespace show --name sb-iot-data-processor-dev --resource-group rg-iot-data-processor-dev`
+4. Verify Storage Account: `az storage account show --name stiotdataprocessordev --resource-group rg-iot-data-processor-dev`
+5. Verify Functions App: `az functionapp show --name func-iot-data-processor-dev --resource-group rg-iot-data-processor-dev`
+6. Check Functions App managed identity is enabled
+7. Verify RBAC role assignments
+
+**Deliverables:**
+- Verification checklist completed
+- Terraform outputs documented
+- Resource IDs and connection strings saved securely
+
+**Acceptance Criteria:**
+- All resources are accessible via Azure CLI/Portal
+- IoT Hub routing to Service Bus is active
+- Storage containers (`processed-data`, `anomalies`, `raw-telemetry`) exist
+- Service Bus topic (`telemetry-topic`) and subscriptions exist
+- Functions App has system-assigned managed identity
+- RBAC roles are assigned correctly (verify with `az role assignment list`)
 
 ### Phase 2: Data Schema and Device Simulation
 
@@ -368,9 +295,10 @@ This development plan outlines the step-by-step tasks required to implement the 
 **Estimated Effort:** 45 minutes
 
 **Steps:**
-1. Build Functions project in Release mode
-2. Run `func azure functionapp publish iot-data-processor-functions`
+1. Build Functions project in Release mode: `dotnet build --configuration Release`
+2. Publish to Azure: `func azure functionapp publish func-iot-data-processor-dev`
 3. Verify deployment in Azure Portal
+4. Check Functions App logs for startup success
 
 **Deliverables:**
 - Deployed Azure Functions app
@@ -644,8 +572,8 @@ This development plan outlines the step-by-step tasks required to implement the 
 ## Timeline and Milestones
 
 ### Week 1: Infrastructure and Schema
-- Tasks 1.1-1.6, 2.1-2.2
-- Milestone: All Azure resources provisioned, Protobuf schema defined
+- Tasks 1.1-1.2, 2.1-2.2
+- Milestone: All Azure resources provisioned via Terraform with RBAC configured, Protobuf schema defined
 
 ### Week 2: Device Simulator and Functions Setup
 - Tasks 2.3-2.4, 3.1-3.2

@@ -212,7 +212,77 @@ resource "azurerm_application_insights" "app_insights" {
   }
 }
 
+# App Service Plan for Azure Functions
+resource "azurerm_service_plan" "func_plan" {
+  name                = "plan-iot-data-processor-${var.environment}"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  os_type             = "Linux"
+  sku_name            = "Y1"  # Consumption plan
+
+  tags = {
+    Environment = var.environment
+    Project     = "IoT Data Processor"
+  }
+}
+
+# Azure Functions App
+resource "azurerm_linux_function_app" "func_app" {
+  name                       = "func-iot-data-processor-${var.environment}"
+  location                   = azurerm_resource_group.rg.location
+  resource_group_name        = azurerm_resource_group.rg.name
+  service_plan_id            = azurerm_service_plan.func_plan.id
+  storage_account_name       = azurerm_storage_account.storage.name
+  storage_account_access_key = azurerm_storage_account.storage.primary_access_key
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  site_config {
+    application_stack {
+      dotnet_version              = "8.0"
+      use_dotnet_isolated_runtime = true
+    }
+    application_insights_connection_string = azurerm_application_insights.app_insights.connection_string
+    application_insights_key               = azurerm_application_insights.app_insights.instrumentation_key
+  }
+
+  app_settings = {
+    "FUNCTIONS_WORKER_RUNTIME"     = "dotnet-isolated"
+    "ServiceBusConnection__fullyQualifiedNamespace" = "${azurerm_servicebus_namespace.servicebus.name}.servicebus.windows.net"
+    "APPINSIGHTS_INSTRUMENTATIONKEY" = azurerm_application_insights.app_insights.instrumentation_key
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "IoT Data Processor"
+  }
+}
+
+# RBAC: Grant Functions App access to Service Bus
+resource "azurerm_role_assignment" "func_servicebus_receiver" {
+  scope                = azurerm_servicebus_namespace.servicebus.id
+  role_definition_name = "Azure Service Bus Data Receiver"
+  principal_id         = azurerm_linux_function_app.func_app.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "func_servicebus_sender" {
+  scope                = azurerm_servicebus_namespace.servicebus.id
+  role_definition_name = "Azure Service Bus Data Sender"
+  principal_id         = azurerm_linux_function_app.func_app.identity[0].principal_id
+}
+
+# RBAC: Grant Functions App access to Storage
+resource "azurerm_role_assignment" "func_storage_blob_contributor" {
+  scope                = azurerm_storage_account.storage.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_linux_function_app.func_app.identity[0].principal_id
+}
+
 # IoT Hub Routing to Service Bus
+# Note: IoT Hub routing uses connection string authentication to Service Bus
+# This is configured automatically by Azure when using servicebus_topic_id
 resource "azurerm_iot_hub_endpoint_servicebus_topic" "routing_endpoint" {
   resource_group_name = azurerm_resource_group.rg.name
   iot_hub_name        = azurerm_iot_hub.iot_hub.name
@@ -280,4 +350,19 @@ output "app_insights_connection_string" {
   description = "Application Insights connection string"
   value       = azurerm_application_insights.app_insights.connection_string
   sensitive   = true
+}
+
+output "function_app_name" {
+  description = "Name of the Azure Functions App"
+  value       = azurerm_linux_function_app.func_app.name
+}
+
+output "function_app_identity_principal_id" {
+  description = "Principal ID of the Functions App managed identity"
+  value       = azurerm_linux_function_app.func_app.identity[0].principal_id
+}
+
+output "function_app_default_hostname" {
+  description = "Default hostname of the Functions App"
+  value       = azurerm_linux_function_app.func_app.default_hostname
 }
