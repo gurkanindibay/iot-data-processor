@@ -1,0 +1,37 @@
+// Telemetry message schema for IoT Data Processor
+// Protocol Buffers v3
+
+syntax = "proto3";
+
+package iotdataprocessor;
+
+// Telemetry message sent by IoT devices
+message Telemetry {
+  string sensor_id = 1;        // Unique identifier for the sensor
+  int64 timestamp = 2;         // Unix timestamp in milliseconds
+  double value = 3;            // Sensor reading value
+  string unit = 4;             // Unit of measurement (e.g., "celsius", "psi", "lux")
+  map<string, string> metadata = 5;  // Additional sensor metadata
+}
+
+// Aggregated telemetry data for storage
+message TelemetryAggregate {
+  string sensor_id = 1;
+  int64 window_start = 2;      // Start of aggregation window
+  int64 window_end = 3;        // End of aggregation window
+  double avg_value = 4;        // Average value in window
+  double min_value = 5;        // Minimum value in window
+  double max_value = 6;        // Maximum value in window
+  int32 count = 7;             // Number of readings in window
+  string unit = 8;
+}
+
+// Anomaly detection result
+message AnomalyAlert {
+  string sensor_id = 1;
+  int64 timestamp = 2;
+  double value = 3;
+  string anomaly_type = 4;     // e.g., "threshold_exceeded", "spike_detected"
+  double threshold = 5;        // Threshold value that was exceeded
+  string severity = 6;         // "low", "medium", "high", "critical"
+}

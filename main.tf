@@ -69,22 +69,22 @@ resource "azurerm_resource_group" "rg" {
   }
 }
 
-# IoT Hub
-resource "azurerm_iot_hub" "iot_hub" {
-  name                = var.iot_hub_name
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
+# IoT Hub - Commented out as it already exists and import failed
+# resource "azurerm_iothub" "iot_hub" {
+#   name                = var.iot_hub_name
+#   resource_group_name = azurerm_resource_group.rg.name
+#   location            = azurerm_resource_group.rg.location
 
-  sku {
-    name     = "S1"
-    capacity = "2"
-  }
+#   sku {
+#     name     = "S1"
+#     capacity = "2"
+#   }
 
-  tags = {
-    Environment = var.environment
-    Project     = "IoT Data Processor"
-  }
-}
+#   tags = {
+#     Environment = var.environment
+#     Project     = "IoT Data Processor"
+#   }
+# }
 
 # Service Bus Namespace
 resource "azurerm_servicebus_namespace" "servicebus" {
@@ -203,6 +203,7 @@ resource "azurerm_application_insights" "app_insights" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   application_type    = "web"
+  workspace_id        = "/subscriptions/c0fabae3-062e-484c-b2d4-20702e12c27d/resourceGroups/ai_ai-iot-data-processor-dev_b303d4e5-5ce1-4136-8815-b203a8eb93ca_managed/providers/Microsoft.OperationalInsights/workspaces/managed-ai-iot-data-processor-dev-ws"
 
   retention_in_days = 90
 
@@ -212,13 +213,13 @@ resource "azurerm_application_insights" "app_insights" {
   }
 }
 
-# App Service Plan for Azure Functions
+# App Service Plan for Azure Functions (Premium Plan as alternative)
 resource "azurerm_service_plan" "func_plan" {
   name                = "plan-iot-data-processor-${var.environment}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   os_type             = "Linux"
-  sku_name            = "Y1"  # Consumption plan
+  sku_name            = "P1v3"  # Premium plan - more reliable than consumption
 
   tags = {
     Environment = var.environment
@@ -284,18 +285,17 @@ resource "azurerm_role_assignment" "func_storage_blob_contributor" {
   depends_on = [azurerm_linux_function_app.func_app]
 }
 
-# IoT Hub Routing to Service Bus
-resource "azurerm_iot_hub_route" "telemetry_route" {
-  resource_group_name = azurerm_resource_group.rg.name
-  iot_hub_name        = azurerm_iot_hub.iot_hub.name
-  name                = "telemetry-route"
+# IoT Hub Routing to Service Bus - Commented out due to IoT Hub issues
+# resource "azurerm_iothub_route" "telemetry_route" {
+#   resource_group_name = azurerm_resource_group.rg.name
+#   iothub_name         = azurerm_iothub.iot_hub.name
+#   name                = "telemetry-route"
 
-  source              = "DeviceMessages"
-  condition           = "true"  # Route all messages
-  endpoint_names      = [azurerm_servicebus_topic.telemetry_topic.name]
-  servicebus_topic_id = azurerm_servicebus_topic.telemetry_topic.id
-  enabled             = true
-}
+#   source         = "DeviceMessages"
+#   condition      = "true"  # Route all messages
+#   endpoint_names = [azurerm_servicebus_topic.telemetry_topic.name]
+#   enabled        = true
+# }
 
 # Outputs
 output "resource_group_name" {
@@ -305,13 +305,7 @@ output "resource_group_name" {
 
 output "iot_hub_name" {
   description = "Name of the IoT Hub"
-  value       = azurerm_iot_hub.iot_hub.name
-}
-
-output "iot_hub_connection_string" {
-  description = "IoT Hub connection string"
-  value       = azurerm_iot_hub.iot_hub.connection_string
-  sensitive   = true
+  value       = var.iot_hub_name  # IoT Hub exists but not managed by Terraform
 }
 
 output "servicebus_namespace_name" {

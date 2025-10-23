@@ -1,0 +1,8 @@
+IOTDataProcessor/bin/*
+IOTDataProcessor/obj/*
+ProtobufTest/bin/**
+ProtobufTest/obj/**
+DeviceSimulator/bin/**
+DeviceSimulator/obj/**
+TestFunc/bin/**
+TestFunc/obj/**
