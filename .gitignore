@@ -16,4 +16,5 @@ TestFunc/publish/**
 *.tfstate
 *.tfstate.backup
 *.tfplan
+tfplan
 .terraform.tfstate.lock.info
