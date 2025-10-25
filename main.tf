@@ -6,13 +6,19 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~>3.0"
+      version = "~>4.50"  # Updated to latest version with Flex Consumption support
     }
   }
 }
 
 provider "azurerm" {
-  features {}
+  features {
+    resource_group {
+      prevent_deletion_if_contains_resources = false
+    }
+  }
+  
+  subscription_id = "7f7fd1b4-f1ea-42e4-b200-b501cd927a5d"
 }
 
 # Variables
@@ -25,7 +31,9 @@ variable "resource_group_name" {
 variable "location" {
   description = "Azure region"
   type        = string
-  default     = "East US"
+  default     = "East US"  # Match portal-created resources
+  # Note: If you get quota errors for Consumption plan in East US, try:
+  # "West US 2", "North Europe", "West Europe", or "Central US"
 }
 
 variable "environment" {
@@ -37,19 +45,19 @@ variable "environment" {
 variable "iot_hub_name" {
   description = "Name of the IoT Hub"
   type        = string
-  default     = "iot-iot-data-processor-dev"
+  default     = "iothub-iot-processor-gindix"
 }
 
 variable "servicebus_namespace_name" {
   description = "Name of the Service Bus namespace"
   type        = string
-  default     = "sb-iot-data-processor-dev"
+  default     = "sb-iot-data-processor-dev-new"
 }
 
 variable "storage_account_name" {
   description = "Name of the Storage Account (lowercase, no hyphens)"
   type        = string
-  default     = "stiotdataprocessordev"
+  default     = "stiotdataprocessordevnew"
 }
 
 variable "app_insights_name" {
@@ -69,22 +77,26 @@ resource "azurerm_resource_group" "rg" {
   }
 }
 
-# IoT Hub - Commented out as it already exists and import failed
-# resource "azurerm_iothub" "iot_hub" {
-#   name                = var.iot_hub_name
-#   resource_group_name = azurerm_resource_group.rg.name
-#   location            = azurerm_resource_group.rg.location
+# IoT Hub
+resource "azurerm_iothub" "iot_hub" {
+  name                = var.iot_hub_name
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
 
-#   sku {
-#     name     = "S1"
-#     capacity = "2"
-#   }
+  sku {
+    name     = "S1"
+    capacity = "2"
+  }
 
-#   tags = {
-#     Environment = var.environment
-#     Project     = "IoT Data Processor"
-#   }
-# }
+  identity {
+    type = "SystemAssigned"
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "IoT Data Processor"
+  }
+}
 
 # Service Bus Namespace
 resource "azurerm_servicebus_namespace" "servicebus" {
@@ -110,6 +122,7 @@ resource "azurerm_servicebus_subscription" "aggregation_sub" {
   name               = "aggregation-sub"
   topic_id           = azurerm_servicebus_topic.telemetry_topic.id
   max_delivery_count = 10
+  lock_duration      = "PT5M"  # 5 minutes for processing
 
   # Optional: Add filters if needed
   # filter {
@@ -121,6 +134,7 @@ resource "azurerm_servicebus_subscription" "anomaly_detection_sub" {
   name               = "anomaly-detection-sub"
   topic_id           = azurerm_servicebus_topic.telemetry_topic.id
   max_delivery_count = 10
+  lock_duration      = "PT5M"  # 5 minutes for processing
 
   # Optional: Add filters if needed
   # filter {
@@ -132,6 +146,7 @@ resource "azurerm_servicebus_subscription" "archival_sub" {
   name               = "archival-sub"
   topic_id           = azurerm_servicebus_topic.telemetry_topic.id
   max_delivery_count = 10
+  lock_duration      = "PT5M"  # 5 minutes for processing
 
   # Optional: Add filters if needed
   # filter {
@@ -156,20 +171,20 @@ resource "azurerm_storage_account" "storage" {
 
 # Storage Containers
 resource "azurerm_storage_container" "processed_data" {
-  name                  = "processed-data"
-  storage_account_name  = azurerm_storage_account.storage.name
+  name                 = "processed-data"
+  storage_account_id   = azurerm_storage_account.storage.id
   container_access_type = "private"
 }
 
 resource "azurerm_storage_container" "anomalies" {
-  name                  = "anomalies"
-  storage_account_name  = azurerm_storage_account.storage.name
+  name                 = "anomalies"
+  storage_account_id   = azurerm_storage_account.storage.id
   container_access_type = "private"
 }
 
 resource "azurerm_storage_container" "raw_telemetry" {
-  name                  = "raw-telemetry"
-  storage_account_name  = azurerm_storage_account.storage.name
+  name                 = "raw-telemetry"
+  storage_account_id   = azurerm_storage_account.storage.id
   container_access_type = "private"
 }
 
@@ -197,15 +212,20 @@ resource "azurerm_storage_management_policy" "lifecycle" {
   }
 }
 
+# Storage Container for Function App Deployment Packages
+resource "azurerm_storage_container" "deployment_packages" {
+  name                 = "deploymentpackages"
+  storage_account_id   = azurerm_storage_account.storage.id
+  container_access_type = "private"
+}
+
 # Application Insights
 resource "azurerm_application_insights" "app_insights" {
   name                = var.app_insights_name
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   application_type    = "web"
-  workspace_id        = "/subscriptions/c0fabae3-062e-484c-b2d4-20702e12c27d/resourceGroups/ai_ai-iot-data-processor-dev_b303d4e5-5ce1-4136-8815-b203a8eb93ca_managed/providers/Microsoft.OperationalInsights/workspaces/managed-ai-iot-data-processor-dev-ws"
-
-  retention_in_days = 90
+  retention_in_days   = 90
 
   tags = {
     Environment = var.environment
@@ -213,13 +233,14 @@ resource "azurerm_application_insights" "app_insights" {
   }
 }
 
-# App Service Plan for Azure Functions (Premium Plan as alternative)
+# App Service Plan for Azure Functions (Flex Consumption Plan)
+# Using the new azurerm provider v4.x which supports Flex Consumption properly
 resource "azurerm_service_plan" "func_plan" {
   name                = "plan-iot-data-processor-${var.environment}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   os_type             = "Linux"
-  sku_name            = "P1v3"  # Premium plan - more reliable than consumption
+  sku_name            = "FC1"  # Flex Consumption plan
 
   tags = {
     Environment = var.environment
@@ -227,35 +248,42 @@ resource "azurerm_service_plan" "func_plan" {
   }
 }
 
-# Azure Functions App
-resource "azurerm_linux_function_app" "func_app" {
-  name                       = "func-iot-data-processor-${var.environment}"
-  location                   = azurerm_resource_group.rg.location
-  resource_group_name        = azurerm_resource_group.rg.name
-  service_plan_id            = azurerm_service_plan.func_plan.id
-  storage_account_name       = azurerm_storage_account.storage.name
-  storage_account_access_key = azurerm_storage_account.storage.primary_access_key
+# Azure Functions App - Flex Consumption
+# Using the new resource type that properly supports Flex Consumption configuration
+resource "azurerm_function_app_flex_consumption" "func_app" {
+  name                = "func-iot-data-processor-${var.environment}"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  service_plan_id     = azurerm_service_plan.func_plan.id
+
+  # Storage configuration for Flex Consumption
+  storage_container_endpoint    = azurerm_storage_account.storage.primary_blob_endpoint
+  storage_container_type        = "blobContainer"
+  storage_authentication_type   = "SystemAssignedIdentity"
+
+  # Runtime configuration
+  runtime_name    = "dotnet-isolated"
+  runtime_version = "8.0"
+
+  site_config {
+    application_insights_connection_string = azurerm_application_insights.app_insights.connection_string
+  }
+
+  app_settings = {
+    "AzureWebJobsStorage"                           = azurerm_storage_account.storage.primary_connection_string
+    "ServiceBusConnection__fullyQualifiedNamespace" = "${azurerm_servicebus_namespace.servicebus.name}.servicebus.windows.net"
+    "DEPLOYMENT_STORAGE_CONNECTION_STRING"          = azurerm_storage_account.storage.primary_connection_string
+    "DEPLOYMENT_STORAGE_CONTAINER_NAME"             = "deploymentpackages"
+  }
 
   identity {
     type = "SystemAssigned"
   }
 
-  site_config {
-    application_stack {
-      dotnet_version              = "8.0"
-      use_dotnet_isolated_runtime = true
-    }
-  }
-
-  app_settings = {
-    "FUNCTIONS_WORKER_RUNTIME"     = "dotnet-isolated"
-    "ServiceBusConnection__fullyQualifiedNamespace" = "${azurerm_servicebus_namespace.servicebus.name}.servicebus.windows.net"
-    "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.app_insights.connection_string
-  }
-
   tags = {
     Environment = var.environment
     Project     = "IoT Data Processor"
+    "hidden-link: /app-insights-resource-id" = azurerm_application_insights.app_insights.id
   }
 }
 
@@ -263,39 +291,59 @@ resource "azurerm_linux_function_app" "func_app" {
 resource "azurerm_role_assignment" "func_servicebus_receiver" {
   scope                = azurerm_servicebus_namespace.servicebus.id
   role_definition_name = "Azure Service Bus Data Receiver"
-  principal_id         = azurerm_linux_function_app.func_app.identity[0].principal_id
+  principal_id         = azurerm_function_app_flex_consumption.func_app.identity[0].principal_id
 
-  depends_on = [azurerm_linux_function_app.func_app]
+  depends_on = [azurerm_function_app_flex_consumption.func_app]
 }
 
 resource "azurerm_role_assignment" "func_servicebus_sender" {
   scope                = azurerm_servicebus_namespace.servicebus.id
   role_definition_name = "Azure Service Bus Data Sender"
-  principal_id         = azurerm_linux_function_app.func_app.identity[0].principal_id
+  principal_id         = azurerm_function_app_flex_consumption.func_app.identity[0].principal_id
 
-  depends_on = [azurerm_linux_function_app.func_app]
+  depends_on = [azurerm_function_app_flex_consumption.func_app]
 }
 
 # RBAC: Grant Functions App access to Storage
 resource "azurerm_role_assignment" "func_storage_blob_contributor" {
   scope                = azurerm_storage_account.storage.id
   role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azurerm_linux_function_app.func_app.identity[0].principal_id
+  principal_id         = azurerm_function_app_flex_consumption.func_app.identity[0].principal_id
 
-  depends_on = [azurerm_linux_function_app.func_app]
+  depends_on = [azurerm_function_app_flex_consumption.func_app]
 }
 
-# IoT Hub Routing to Service Bus - Commented out due to IoT Hub issues
-# resource "azurerm_iothub_route" "telemetry_route" {
-#   resource_group_name = azurerm_resource_group.rg.name
-#   iothub_name         = azurerm_iothub.iot_hub.name
-#   name                = "telemetry-route"
+# IoT Hub Endpoint for Service Bus Topic
+resource "azurerm_iothub_endpoint_servicebus_topic" "servicebus_endpoint" {
+  resource_group_name = azurerm_resource_group.rg.name
+  iothub_id           = azurerm_iothub.iot_hub.id
+  name                = "telemetry-endpoint"
 
-#   source         = "DeviceMessages"
-#   condition      = "true"  # Route all messages
-#   endpoint_names = [azurerm_servicebus_topic.telemetry_topic.name]
-#   enabled        = true
-# }
+  authentication_type = "identityBased"
+  endpoint_uri        = "sb://${azurerm_servicebus_namespace.servicebus.name}.servicebus.windows.net"
+  entity_path         = azurerm_servicebus_topic.telemetry_topic.name
+}
+
+# IoT Hub Route to Service Bus
+resource "azurerm_iothub_route" "telemetry_route" {
+  resource_group_name = azurerm_resource_group.rg.name
+  iothub_name         = azurerm_iothub.iot_hub.name
+  name                = "telemetry-route"
+
+  source         = "DeviceMessages"
+  condition      = "true"  # Route all messages
+  endpoint_names = [azurerm_iothub_endpoint_servicebus_topic.servicebus_endpoint.name]
+  enabled        = true
+}
+
+# RBAC: Grant IoT Hub managed identity access to Service Bus
+resource "azurerm_role_assignment" "iothub_servicebus_sender" {
+  scope                = azurerm_servicebus_namespace.servicebus.id
+  role_definition_name = "Azure Service Bus Data Sender"
+  principal_id         = azurerm_iothub.iot_hub.identity[0].principal_id
+
+  depends_on = [azurerm_iothub.iot_hub]
+}
 
 # Outputs
 output "resource_group_name" {
@@ -305,7 +353,7 @@ output "resource_group_name" {
 
 output "iot_hub_name" {
   description = "Name of the IoT Hub"
-  value       = var.iot_hub_name  # IoT Hub exists but not managed by Terraform
+  value       = azurerm_iothub.iot_hub.name
 }
 
 output "servicebus_namespace_name" {
@@ -343,15 +391,20 @@ output "app_insights_connection_string" {
 
 output "function_app_name" {
   description = "Name of the Azure Functions App"
-  value       = azurerm_linux_function_app.func_app.name
+  value       = azurerm_function_app_flex_consumption.func_app.name
 }
 
 output "function_app_identity_principal_id" {
   description = "Principal ID of the Functions App managed identity"
-  value       = azurerm_linux_function_app.func_app.identity[0].principal_id
+  value       = azurerm_function_app_flex_consumption.func_app.identity[0].principal_id
 }
 
 output "function_app_default_hostname" {
   description = "Default hostname of the Functions App"
-  value       = azurerm_linux_function_app.func_app.default_hostname
+  value       = azurerm_function_app_flex_consumption.func_app.default_hostname
+}
+
+output "function_app_kind" {
+  description = "Kind of the Functions App"
+  value       = azurerm_function_app_flex_consumption.func_app.kind
 }
