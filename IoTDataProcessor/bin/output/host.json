@@ -1,0 +1,23 @@
+{
+  "version": "2.0",
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "excludedTypes": "Request"
+      }
+    },
+    "logLevel": {
+      "default": "Information",
+      "Host.Results": "Error",
+      "Function": "Information",
+      "Host.Aggregator": "Trace"
+    },
+    "blobLogging": {
+      "enabled": true,
+      "containerName": "application-logs",
+      "maxFileSizeMB": 100,
+      "retentionDays": 30
+    }
+  }
+}
