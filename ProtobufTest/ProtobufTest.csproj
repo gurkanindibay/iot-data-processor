@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Google.Protobuf" Version="3.33.0" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.17.5" />
   </ItemGroup>
 
 </Project>

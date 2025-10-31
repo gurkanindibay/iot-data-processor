@@ -18,7 +18,7 @@ namespace IoTDataProcessor
             _logger = logger;
         }
 
-        [Function(nameof(AnomalyDetector))]
+        [Function("AnomalyDetector")]
         public async Task Run(
             [ServiceBusTrigger("telemetry-topic", "anomaly-detection-sub", Connection = "ServiceBusConnection")]
             ServiceBusReceivedMessage message,

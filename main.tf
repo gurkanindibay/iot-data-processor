@@ -188,6 +188,13 @@ resource "azurerm_storage_container" "raw_telemetry" {
   container_access_type = "private"
 }
 
+# Storage Container for Application Logs
+resource "azurerm_storage_container" "application_logs" {
+  name                 = "application-logs"
+  storage_account_id   = azurerm_storage_account.storage.id
+  container_access_type = "private"
+}
+
 # Storage Lifecycle Management
 resource "azurerm_storage_management_policy" "lifecycle" {
   storage_account_id = azurerm_storage_account.storage.id
@@ -196,7 +203,7 @@ resource "azurerm_storage_management_policy" "lifecycle" {
     name    = "data_lifecycle"
     enabled = true
     filters {
-      prefix_match = ["processed-data/", "anomalies/", "raw-telemetry/"]
+      prefix_match = ["processed-data/", "anomalies/", "raw-telemetry/", "application-logs/"]
       blob_types   = ["blockBlob"]
     }
     actions {
@@ -271,9 +278,11 @@ resource "azurerm_function_app_flex_consumption" "func_app" {
 
   app_settings = {
     "AzureWebJobsStorage"                           = azurerm_storage_account.storage.primary_connection_string
+    "ServiceBusConnection"                          = "Endpoint=sb://${azurerm_servicebus_namespace.servicebus.name}.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=${azurerm_servicebus_namespace.servicebus.default_primary_key}"
     "ServiceBusConnection__fullyQualifiedNamespace" = "${azurerm_servicebus_namespace.servicebus.name}.servicebus.windows.net"
     "DEPLOYMENT_STORAGE_CONNECTION_STRING"          = azurerm_storage_account.storage.primary_connection_string
     "DEPLOYMENT_STORAGE_CONTAINER_NAME"             = "deploymentpackages"
+    "WEBSITE_RUN_FROM_PACKAGE"                     = "https://${azurerm_storage_account.storage.name}.blob.core.windows.net/deploymentpackages/functionapp.zip"
   }
 
   identity {

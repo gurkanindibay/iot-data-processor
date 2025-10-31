@@ -8,6 +8,8 @@ using Azure.Messaging.ServiceBus;
 using Azure.Storage.Blobs;
 using Google.Protobuf;
 using System.Text.Json;
+using Microsoft.Azure.Functions.Worker.Http;
+using System.Net;
 
 namespace IoTDataProcessor
 {
@@ -20,7 +22,7 @@ namespace IoTDataProcessor
             _logger = logger;
         }
 
-        [Function(nameof(TelemetryAggregator))]
+        [Function("TelemetryAggregator")]
         public async Task Run(
             [ServiceBusTrigger("telemetry-topic", "aggregation-sub", Connection = "ServiceBusConnection")]
             ServiceBusReceivedMessage message,
@@ -88,6 +90,17 @@ namespace IoTDataProcessor
                 // Dead-letter the message for investigation
                 await messageActions.DeadLetterMessageAsync(message, deadLetterReason: ex.Message);
             }
+        }
+
+        [Function("TestHttp")]
+        public async Task<HttpResponseData> TestHttp([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestData req)
+        {
+            _logger.LogInformation("TestHttp function triggered");
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+            await response.WriteStringAsync("IoT Data Processor is running!");
+            return response;
         }
     }
 }
