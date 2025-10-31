@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "Sj2VjWDoBAM=",
+  "success": true,
+  "projectFilePath": "/Users/gurkan_indibay/source/azure_tryouts/azure_functions/DeviceSimulator/DeviceSimulator.csproj",
+  "expectedPackageFiles": [
+    "/Users/gurkan_indibay/.nuget/packages/google.protobuf/3.29.2/google.protobuf.3.29.2.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/mqttnet/4.3.6.1152/mqttnet.4.3.6.1152.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.21/microsoft.aspnetcore.app.ref.8.0.21.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/microsoft.netcore.app.host.osx-arm64/8.0.21/microsoft.netcore.app.host.osx-arm64.8.0.21.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/microsoft.netcore.app.ref/8.0.21/microsoft.netcore.app.ref.8.0.21.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "dgSpecHash": "eH/8DeHEw94=",
+  "success": true,
+  "projectFilePath": "/Users/gurkan_indibay/source/azure_tryouts/azure_functions/ProtobufTest/ProtobufTest.csproj",
+  "expectedPackageFiles": [
+    "/Users/gurkan_indibay/.nuget/packages/azure.core/1.38.0/azure.core.1.38.0.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/azure.core.amqp/1.3.0/azure.core.amqp.1.3.0.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/azure.messaging.servicebus/7.17.5/azure.messaging.servicebus.7.17.5.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/google.protobuf/3.33.0/google.protobuf.3.33.0.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/microsoft.azure.amqp/2.6.5/microsoft.azure.amqp.2.6.5.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/microsoft.bcl.asyncinterfaces/1.1.1/microsoft.bcl.asyncinterfaces.1.1.1.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/system.clientmodel/1.0.0/system.clientmodel.1.0.0.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/system.diagnostics.diagnosticsource/6.0.1/system.diagnostics.diagnosticsource.6.0.1.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/system.memory/4.5.4/system.memory.4.5.4.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/system.memory.data/1.0.2/system.memory.data.1.0.2.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/system.numerics.vectors/4.5.0/system.numerics.vectors.4.5.0.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/system.runtime.compilerservices.unsafe/6.0.0/system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/system.text.encodings.web/4.7.2/system.text.encodings.web.4.7.2.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/system.text.json/4.7.2/system.text.json.4.7.2.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/system.threading.tasks.extensions/4.5.4/system.threading.tasks.extensions.4.5.4.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/microsoft.netcore.app.ref/8.0.21/microsoft.netcore.app.ref.8.0.21.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.21/microsoft.aspnetcore.app.ref.8.0.21.nupkg.sha512",
+    "/Users/gurkan_indibay/.nuget/packages/microsoft.netcore.app.host.osx-arm64/8.0.21/microsoft.netcore.app.host.osx-arm64.8.0.21.nupkg.sha512"
+  ],
+  "logs": []
+}

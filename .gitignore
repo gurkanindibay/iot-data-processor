@@ -1,6 +1,6 @@
-IOTDataProcessor/bin/*
-IOTDataProcessor/obj/*
-IOTDataProcessor/publish/*
+IoTDataProcessor/bin/*
+IoTDataProcessor/obj/*
+IoTDataProcessor/publish/*
 ProtobufTest/bin/**
 ProtobufTest/obj/**
 ProtobufTest/publish/**
@@ -18,3 +18,8 @@ TestFunc/publish/**
 *.tfplan
 tfplan
 .terraform.tfstate.lock.info
+# Ignore local settings and publish outputs
+**/local.settings.json
+**/bin/publish/**
+**/bin/output/**
+**/publish/**
