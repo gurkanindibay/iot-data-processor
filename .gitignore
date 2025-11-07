@@ -10,6 +10,8 @@ DeviceSimulator/publish/**
 TestFunc/bin/**
 TestFunc/obj/**
 TestFunc/publish/**
+ProtobufTest/bin/**
+ProtobufTest/obj/**
 
 # Terraform
 .terraform/
@@ -23,3 +25,4 @@ tfplan
 **/bin/publish/**
 **/bin/output/**
 **/publish/**
+replacements.txt
